@@ -1,0 +1,76 @@
+---
+- name: Deploy AWS infrastructure and code
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  tags: always
+  vars: 
+    aws_access_key_id: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+    aws_secret_access_key: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+  tasks:
+
+    - name: Login into ECR
+      shell: $(aws ecr get-login --no-include-email --region us-east-2)
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}"
+    
+    # Create Amazon ECR repo
+    - name: Create repo
+      community.aws.ecs_ecr:
+        name: flask-demo/flask-api
+        aws_access_key: "{{ aws_access_key_id }}"
+        aws_secret_key: "{{ aws_secret_access_key }}"
+        region: us-east-2
+    
+    # Build image and upload to ECR
+    - name: Build Flask image
+      community.general.docker_image:
+        build: 
+          path: .
+        name: lookup('env', 'ECR_URL')/flask-demo/flask-api
+        tag: latest
+        push: yes
+        source: build
+    
+    # Assuming that we have a running and healthy EKS cluster (I have created the cluster offline with elkctl to speedup the process)
+    # eksctl create cluster \
+    #  --name sre-take-home-eks \
+    #  --version 1.18 \
+    #  --with-oidc \
+    #  --without-nodegroup \
+    #  --region=us-east-2
+    # 
+    #eksctl create nodegroup \
+    #  --cluster sre-take-home-eks \
+    #  --version auto \
+    #  --name nodes \
+    #  --node-type t3.medium \
+    #  --node-ami auto \
+    #  --nodes 1 \
+    #  --nodes-min 1 \
+    #  --nodes-max 1 \
+    #  --region=us-east-2
+
+    - name: Login into EKS cluster
+      command: aws eks update-kubeconfig --name sre-take-home-eks --region us-east-2
+    
+    # Create namespace
+    - name: Create namespace
+      community.kubernetes.k8s:
+        name: flask-api
+        api_version: v1
+        kind: Namespace
+        state: present
+    
+    # Create Deployment in k8s cluster (I'm ignoring authentication and so on here, running out of time)
+    - name: Create Deployment
+      community.kubernetes.k8s:
+        state: present
+        src: deployment.yml
+    
+    # Create the service
+    - name: Create Service
+      community.kubernetes.k8s:
+        state: present
+        src: service.yml
