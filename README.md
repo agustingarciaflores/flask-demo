@@ -157,10 +157,6 @@ Events:            <none>
 
 In no specific order, here are some of the things that I would have done to take this to production if this was a real application
 
-### Use a WSGI server
-
-The development server that comes integrated with Flask is cool for that, development. For real production workloads I would have deployed the app with a WSGI server like [Gunicorn](https://gunicorn.org/). Easy to use, scalable and secure.
-
 ### Put the app behind a reverse proxy
 
 Most of the time REST APIs are running behind a reverse proxy. I usually use NGINX. Specifically in k8s, now I usually take advantage of the [NGINX Ingress Controller](https://github.com/kubernetes/ingress-nginx)
