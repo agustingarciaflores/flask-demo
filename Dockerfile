@@ -1,7 +1,7 @@
-FROM python:alpine
+FROM python
 WORKDIR /app
-ADD app.py requirements.txt /app
+ADD app/ requirements.txt /app
 RUN pip install -r requirements.txt
 
 EXPOSE 5000
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "wsgi:app"]
